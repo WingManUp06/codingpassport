@@ -1,32 +1,31 @@
 const express = require("express")
 const app = express()
 // calling in everything else
-const bcrypt = require("bcrypt")
+// const bcrypt = require("bcrypt")
+
 const passport = require("passport")
+
 const session = require("express-session")
 const MongoStore = require("connect-mongo")
-const { Strategy } = require("passport-local")
+// const { Strategy } = require("passport-local")
 
 // For the database
 const mongoose = require("mongoose")
-let connString = mongoose.connect("mongodb://127.0.0.1:27017/learningPassport");
-
+mongoose.connect("mongodb://127.0.0.1:27017/learningPassport");
 const User = require("./model/User.js");
 
+//Helpers
+const { hashPassword } = require("./helpers/helpers.js")
 
 // for passport
-const initializePassport = require('./auth.js')
-initializePassport(passport)
-// Middleware 
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }));
-// For web pages
-app.use(express.static("views"))
+require('./auth.js')
 
+
+// Middleware 
 app.use(session({
     secret: "thisNeedsToBeChanged",
-    resave: true,
-    saveUninitialized: false,
+    resave: false,
+    saveUninitialized: true,
     // Look at the "connect-mongo" npm documentation for below
     store: MongoStore.create({ mongoUrl: "mongodb://127.0.0.1:27017/learningPassport", collection: 'sessions' }),
     cookie: {
@@ -35,19 +34,25 @@ app.use(session({
     }
 }));
 
+app.use(passport.initialize())
+app.use(passport.session())
+
+
+// For web pages
+app.use(express.static("views"))
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }));
+
 app.get("/", (req, res) => {
     console.log("get req to /")
 })
 
 
-app.post("/login", (req, res) => {
+app.post("/login", passport.authenticate("local", { failureRedirect: "/failure", successRedirect: "/success"}))
 
-})
-
-
-app.post("/signup", async (req, res, next) => {
+app.post("/signup", async (req, res) => {
     // Check if the email has already been used
-    const hashedPassword = await bcrypt.hash(req.body.password, 10)
+    const hashedPassword = await hashPassword(req.body.password)
     console.log(hashedPassword)
     const newUser =  await User.create({
         email: req.body.email,
@@ -58,6 +63,5 @@ app.post("/signup", async (req, res, next) => {
     console.log(newUser)
     res.redirect("login.html")
 })
-
 
 app.listen(3000)
