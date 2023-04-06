@@ -5,7 +5,7 @@ async function hashPassword(password){
 }
 
 async function checkPassword(userEnteredPw, hashedPw){
-    let bool = await bcrypt.compare(hashedPw, userEnteredPw)
+    let bool = await bcrypt.compare(userEnteredPw, hashedPw)
     console.log(bool)
     return bool;
 }

@@ -2,10 +2,9 @@ const express = require("express")
 const app = express()
 // calling in everything else
 // const bcrypt = require("bcrypt")
-
 const passport = require("passport")
-
 const session = require("express-session")
+
 const MongoStore = require("connect-mongo")
 // const { Strategy } = require("passport-local")
 
@@ -18,14 +17,14 @@ const User = require("./model/User.js");
 const { hashPassword } = require("./helpers/helpers.js")
 
 // for passport
-require('./auth.js')
+require("./auth.js")
 
 
 // Middleware 
 app.use(session({
     secret: "thisNeedsToBeChanged",
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     // Look at the "connect-mongo" npm documentation for below
     store: MongoStore.create({ mongoUrl: "mongodb://127.0.0.1:27017/learningPassport", collection: 'sessions' }),
     cookie: {
@@ -37,18 +36,20 @@ app.use(session({
 app.use(passport.initialize())
 app.use(passport.session())
 
+// require('./auth.js')
+
 
 // For web pages
 app.use(express.static("views"))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
 
+
 app.get("/", (req, res) => {
     console.log("get req to /")
 })
 
-
-app.post("/login", passport.authenticate("local", { failureRedirect: "/failure", successRedirect: "/success"}))
+app.post("/login", passport.authenticate("local", { failureRedirect: "/", successRedirect: "/secretSite"}))
 
 app.post("/signup", async (req, res) => {
     // Check if the email has already been used
@@ -61,7 +62,20 @@ app.post("/signup", async (req, res) => {
 
     newUser.save().then().catch(e => console.log(e))
     console.log(newUser)
-    res.redirect("login.html")
+    res.redirect("login.html");
 })
+
+function checkAuth(req, res, next){
+    let bool = req.isAuthenticated()
+    if(bool){
+        next()
+    } else {
+        res.send("I cant let you through")
+    }
+}
+
+app.get("/secretSite", checkAuth, (req, res) => [
+    res.send("<h1>This is the secret site</h1>")
+])
 
 app.listen(3000)
